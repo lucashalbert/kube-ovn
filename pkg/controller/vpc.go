@@ -101,6 +101,10 @@ func (c *Controller) runDelVpcWorker() {
 }
 
 func (c *Controller) handleDelVpc(vpc *kubeovnv1.Vpc) error {
+	if err := c.deleteVpcLb(vpc); err != nil {
+		return err
+	}
+
 	err := c.deleteVpcRouter(vpc.Status.Router)
 	if err != nil {
 		return err
@@ -308,10 +312,21 @@ func (c *Controller) handleAddOrUpdateVpc(key string) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.config.KubeOvnClient.KubeovnV1().Vpcs().Patch(context.Background(), vpc.Name, types.MergePatchType, bytes, metav1.PatchOptions{}, "status")
+	vpc, err = c.config.KubeOvnClient.KubeovnV1().Vpcs().Patch(context.Background(), vpc.Name, types.MergePatchType, bytes, metav1.PatchOptions{}, "status")
 	if err != nil {
 		return err
 	}
+
+	if strings.ToLower(vpc.Annotations[util.VpcLbAnnotation]) == "on" {
+		if err = c.createVpcLb(vpc); err != nil {
+			return err
+		}
+	} else {
+		if err = c.deleteVpcLb(vpc); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
