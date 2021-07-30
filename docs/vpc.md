@@ -175,7 +175,7 @@ Allow external network to access services in custom VPCs.
 
 ### Steps to use VPC LoadBalancer
 
-1. Install Intel-Multus and macvlan CNI.
+1. Install Multus CNI and macvlan CNI.
 
 2. Pull docker image `kubeovn/vpc-nat-gateway:v1.8.0`.
 
@@ -223,12 +223,6 @@ spec:
 kubectl annotate --overwrite vpc <VPC_NAME> ovn.kubernetes.io/vpc_lb=on
 ```
 
-If you want to specify external IP address used by the LoadBalancer Pod, add annotation BEFORE adding the annotation above.
-
-```bash
-kubectl annotate --overwrite vpc <VPC_NAME> ovn.kubernetes.io/vpc_lb_ip=202.120.68.254
-```
-
 5. Access services in the custom VPC.
 
 Add static route(s) in your host or router:
@@ -237,7 +231,7 @@ Add static route(s) in your host or router:
 ip route add <SVC_IP> via <VPC_LB_IP>
 ```
 
-Replace `<VPC_LB_IP>` with the IP address allocated to the VPC LB Pod.
+Replace `<VPC_LB_IP>` with the VPC LB Pod's IP address in subnet `ovn-vpc-lb`.
 
 ## Custom VPC limitation
 

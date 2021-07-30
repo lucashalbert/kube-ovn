@@ -72,11 +72,6 @@ func (c *Controller) genVpcLbDeployment(vpc *kubeovnv1.Vpc) (*v1.Deployment, err
 		return nil, err
 	}
 
-	ipv4, ipv6, err := c.ipam.AllocateIP(subnet.Name)
-	if err != nil {
-		return nil, err
-	}
-
 	replicas := int32(1)
 	name := vpcLbDeploymentName(vpc.Name)
 	allowPrivilegeEscalation := true
@@ -88,9 +83,8 @@ func (c *Controller) genVpcLbDeployment(vpc *kubeovnv1.Vpc) (*v1.Deployment, err
 
 	podAnnotations := map[string]string{
 		util.VpcAnnotation:               vpc.Name,
-		util.AttachmentNetworkAnnotation: fmt.Sprintf("%s/%s", c.config.PodNamespace, util.VpcLbNetworkAttachment),
 		util.LogicalSwitchAnnotation:     subnet.Name,
-		util.IpAddressAnnotation:         strings.Trim(fmt.Sprintf("%s,%s", ipv4, ipv6), ","),
+		util.AttachmentNetworkAnnotation: util.VpcLbNetworkAttachment,
 	}
 
 	deployment := &v1.Deployment{
@@ -134,13 +128,14 @@ func (c *Controller) genVpcLbDeployment(vpc *kubeovnv1.Vpc) (*v1.Deployment, err
 		},
 	}
 
+	v4Gw, v6Gw := util.SplitStringIP(subnet.Spec.Gateway)
 	v4Svc, v6Svc := util.SplitStringIP(c.config.ServiceClusterIPRange)
-	if ipv4 != "" && v4Svc != "" {
+	if v4Gw != "" && v4Svc != "" {
 		deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, corev1.Container{
 			Name:            "init-ipv4-route",
 			Image:           "kubeovn/vpc-nat-gateway:v1.8.0",
 			Command:         []string{"ip"},
-			Args:            strings.Fields(fmt.Sprintf("-4 route add %s via %s", v4Svc, ipv4)),
+			Args:            strings.Fields(fmt.Sprintf("-4 route add %s via %s", v4Svc, v4Gw)),
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			SecurityContext: &corev1.SecurityContext{
 				Privileged:               &privileged,
@@ -158,12 +153,12 @@ func (c *Controller) genVpcLbDeployment(vpc *kubeovnv1.Vpc) (*v1.Deployment, err
 			},
 		})
 	}
-	if ipv6 != "" && v6Svc != "" {
+	if v6Gw != "" && v6Svc != "" {
 		deployment.Spec.Template.Spec.InitContainers = append(deployment.Spec.Template.Spec.InitContainers, corev1.Container{
 			Name:            "init-ipv6-route",
 			Image:           "kubeovn/vpc-nat-gateway:v1.8.0",
 			Command:         []string{"ip"},
-			Args:            strings.Fields(fmt.Sprintf("-6 route add %s via %s", v6Svc, ipv6)),
+			Args:            strings.Fields(fmt.Sprintf("-6 route add %s via %s", v6Svc, v6Gw)),
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			SecurityContext: &corev1.SecurityContext{
 				Privileged:               &privileged,

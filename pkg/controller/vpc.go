@@ -317,14 +317,12 @@ func (c *Controller) handleAddOrUpdateVpc(key string) error {
 		return err
 	}
 
-	if strings.ToLower(vpc.Annotations[util.VpcLbAnnotation]) == "on" {
+	if len(vpc.Annotations) != 0 && strings.ToLower(vpc.Annotations[util.VpcLbAnnotation]) == "on" {
 		if err = c.createVpcLb(vpc); err != nil {
 			return err
 		}
-	} else {
-		if err = c.deleteVpcLb(vpc); err != nil {
-			return err
-		}
+	} else if err = c.deleteVpcLb(vpc); err != nil {
+		return err
 	}
 
 	return nil

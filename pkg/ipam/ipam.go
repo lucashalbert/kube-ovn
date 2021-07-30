@@ -36,22 +36,6 @@ func NewIPAM() *IPAM {
 	}
 }
 
-func (ipam *IPAM) AllocateIP(subnetName string) (string, string, error) {
-	ipam.mutex.RLock()
-	defer ipam.mutex.RUnlock()
-	if subnet, ok := ipam.Subnets[subnetName]; ok {
-		var ipv4, ipv6 string
-		if subnet.Protocol == kubeovnv1.ProtocolDual || subnet.Protocol == kubeovnv1.ProtocolIPv4 {
-			ipv4 = string(subnet.V4FreeIPList[0].Start)
-		}
-		if subnet.Protocol == kubeovnv1.ProtocolDual || subnet.Protocol == kubeovnv1.ProtocolIPv6 {
-			ipv4 = string(subnet.V6FreeIPList[0].Start)
-		}
-		return ipv4, ipv6, nil
-	}
-	return "", "", NoAvailableError
-}
-
 func (ipam *IPAM) GetRandomAddress(podName string, subnetName string) (string, string, string, error) {
 	ipam.mutex.RLock()
 	defer ipam.mutex.RUnlock()
